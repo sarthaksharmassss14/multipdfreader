@@ -88,17 +88,28 @@ def main():
     st.header("Ask questions from PDF 📄")
 
     
-    with st.sidebar:
-        st.title("Upload PDFs")
-        pdf_docs = st.file_uploader("Upload PDF Files", accept_multiple_files=True)
-        if st.button("Submit & Process") and pdf_docs:
-            with st.spinner("Processing..."):
-                text = get_pdf_text(pdf_docs)
-                doc_type = detect_document_type(text)
-                st.session_state.doc_type = doc_type  
-                chunks = get_text_chunks(text)
-                get_vector_store(chunks)
-                st.success("PDFs processed ")
+   with st.sidebar:
+    st.title("📄 Upload PDFs")
+    
+    st.markdown("""
+        <div style="border:2px dashed #aaa; padding:15px; border-radius:10px; text-align:center; background-color:#f9f9f9;">
+            <strong>📱 Mobile Tip:</strong><br>
+            Tap the box below to upload your PDF file.<br>
+            Use Chrome or Safari if upload doesn't work.
+        </div>
+    """, unsafe_allow_html=True)
+
+    pdf_docs = st.file_uploader("📤 Tap here to upload", type=['pdf'], accept_multiple_files=True)
+
+    if st.button("Submit & Process") and pdf_docs:
+        with st.spinner("Processing..."):
+            text = get_pdf_text(pdf_docs)
+            doc_type = detect_document_type(text)
+            st.session_state.doc_type = doc_type  
+            chunks = get_text_chunks(text)
+            get_vector_store(chunks)
+            st.success("✅ PDFs processed!")
+
 
    
     if "doc_type" in st.session_state:
