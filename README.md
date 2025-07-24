@@ -2,8 +2,8 @@
 A powerful AI-powered chatbot that allows you to Chat with multiple PDF files using LangChain, Google Generative AI (Gemini) and Streamlit.
 
 ---
-
-🔗 Project Link https://multipdfreader.onrender.com
+🚀 Demo
+🌐 Live App: https://multipdfreader.onrender.com
 
 
 ---
