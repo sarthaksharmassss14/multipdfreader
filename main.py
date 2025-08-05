@@ -103,13 +103,14 @@ def user_input(user_question, doc_type):
         st.session_state.temp_qa_log.append({
             "question": user_question,
             "answer": answer,
-            "email": email
+            "email": st.session_state.email 
         })
 
-    # Log chat to Mongo via your logger
-    from logger import log_chat
-    email = st.session_state.get("email", "anonymous")  # default to anonymous if not set
-    log_chat(user_input=user_question, bot_response=answer, email=email)
+   # Log chat to Mongo only if email is provided
+    if st.session_state.email:
+        from logger import log_chat
+        log_chat(user_input=user_question, bot_response=answer, email=st.session_state.email)
+
 
 
 
