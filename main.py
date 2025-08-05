@@ -11,6 +11,7 @@ import os
 import json
 from pathlib import Path
 import uuid
+from logger import log_chat
 
 
 # Load API key
@@ -96,21 +97,21 @@ def user_input(user_question, doc_type):
     answer = response["output_text"]
     st.write("Reply:", answer)
 
-    # If email is available, save directly to file
-    if st.session_state.email:
+    # Save Q&A to JSON if email is available
+    if st.session_state.get("email"):
         save_qa_to_json(user_question, answer, st.session_state.email, st.session_state.json_file)
+
+        # Also log to MongoDB
+        from logger import log_chat
+        log_chat(user_input=user_question, bot_response=answer, email=st.session_state.email)
+    
     else:
+        # Save temporarily (no email yet)
         st.session_state.temp_qa_log.append({
             "question": user_question,
             "answer": answer,
-            "email": st.session_state.email 
+            "email": None  
         })
-
-   # Log chat to Mongo only if email is provided
-    if st.session_state.email:
-        from logger import log_chat
-        log_chat(user_input=user_question, bot_response=answer, email=st.session_state.email)
-
 
 
 
@@ -166,10 +167,11 @@ def main():
             email_input = st.text_input("🔒 Please enter your email to enable saving your Q&A:")
 
             if email_input and "@gmail.com" in email_input:
-                # Save temp QA log to file after getting email
+        # Save temp QA log to file after getting email
                 for qa in st.session_state.temp_qa_log:
                     save_qa_to_json(qa["question"], qa["answer"], email_input, st.session_state.json_file)
-                st.session_state.temp_qa_log = []  # Clear after saving
+                    log_chat(user_input=qa["question"], bot_response=qa["answer"], email=email_input)  # ✅ ADD this line
+
 
                 st.session_state.email = email_input
                 st.session_state.email_prompted = False
