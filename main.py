@@ -79,6 +79,7 @@ def save_qa_to_json(question, answer, email, file_path):
     with open(file_path, "w") as f:
         json.dump(data, f, indent=4)
 
+
 # Answer questions
 def user_input(user_question, doc_type):
     if not os.path.exists("faiss_index"):
@@ -98,13 +99,18 @@ def user_input(user_question, doc_type):
     # If email is available, save directly to file
     if st.session_state.email:
         save_qa_to_json(user_question, answer, st.session_state.email, st.session_state.json_file)
-
-    # If email is not yet collected, save to temp log
     else:
         st.session_state.temp_qa_log.append({
             "question": user_question,
-            "answer": answer
+            "answer": answer,
+            "email": email
         })
+
+    # Log chat to Mongo via your logger
+    from logger import log_chat
+    email = st.session_state.get("email", "anonymous")  # default to anonymous if not set
+    log_chat(user_input=user_question, bot_response=answer, email=email)
+
 
 
 # Main App
@@ -183,6 +189,7 @@ def main():
                 mime="application/json"
             )
         st.markdown(f"Saved at: `{st.session_state.json_file}`")
+
 
 
 if __name__ == "__main__":
