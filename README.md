@@ -5,7 +5,8 @@ A conversational AI assistant that allows users to chat with multiple PDFs, log 
 
 🚀 Demo
  Live App: https://multipdfreader.onrender.com
-<img width="1854" height="759" alt="Screenshot 2025-08-05 183414" src="https://github.com/user-attachments/assets/7eb7ec1d-4d74-44b1-bc88-d2c56d5df476" />
+<img width="1916" height="884" alt="Screenshot 2025-08-06 173606" src="https://github.com/user-attachments/assets/eb292ca3-a52d-4eee-b849-6a6fab7d05cc" />
+
 ---
 
  🚀 Features
