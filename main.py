@@ -1,5 +1,5 @@
 import streamlit as st
-from PyPDF2 import PdfReader
+import fitz
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain.vectorstores import FAISS
@@ -12,7 +12,8 @@ import json
 from pathlib import Path
 import uuid
 from logger import log_chat
-
+from logger import log_summary
+from summarizer import summarize_conversation
 
 # Load API key
 load_dotenv()
@@ -22,10 +23,12 @@ genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 def get_pdf_text(pdf_docs):
     text = ""
     for pdf in pdf_docs:
-        pdf_reader = PdfReader(pdf)
-        for page in pdf_reader.pages:
-            text += page.extract_text()
+        with fitz.open(stream=pdf.read(), filetype="pdf") as doc:
+            for page in doc:
+                text += page.get_text()
     return text
+
+
 
 def get_text_chunks(text):
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
@@ -113,6 +116,21 @@ def user_input(user_question, doc_type):
             "email": None  
         })
 
+def save_summary_to_mongo(email, summary):
+    try:
+        client = MongoClient(os.getenv("MONGODB_URI"))
+        db = client["ragchatbot"]
+        collection = db["users"]  # or whatever your collection is
+
+        # Update the document matching the email with the summary
+        result = collection.update_one(
+            {"email": email},
+            {"$set": {"summary": summary}},
+            upsert=True
+        )
+        print("Summary saved successfully.")
+    except Exception as e:
+        print("Error saving summary:", e)
 
 
 # Main App
@@ -167,11 +185,10 @@ def main():
             email_input = st.text_input("🔒 Please enter your email to enable saving your Q&A:")
 
             if email_input and "@gmail.com" in email_input:
-        # Save temp QA log to file after getting email
+                # Save temp QA log to file after getting email
                 for qa in st.session_state.temp_qa_log:
                     save_qa_to_json(qa["question"], qa["answer"], email_input, st.session_state.json_file)
-                    log_chat(user_input=qa["question"], bot_response=qa["answer"], email=email_input)  # ✅ ADD this line
-
+                    log_chat(user_input=qa["question"], bot_response=qa["answer"], email=email_input)  
 
                 st.session_state.email = email_input
                 st.session_state.email_prompted = False
@@ -181,20 +198,52 @@ def main():
 
     else:
         st.warning("Please upload and process PDFs first.")
+    
+    
 
-    # JSON Download if email given and file exists
-    if Path(st.session_state.json_file).exists() and st.session_state.email:
-        with open(st.session_state.json_file, "rb") as f:
-            st.download_button(
-                label="📥 Download Q&A JSON",
-                data=f,
-                file_name=os.path.basename(st.session_state.json_file),
-                mime="application/json"
-            )
-        st.markdown(f"Saved at: `{st.session_state.json_file}`")
+    # 🔍 Conversation Summarizer button
+    if st.session_state.email:
+        if st.button("📋 Summarize My Chat"):
+            from summarizer import summarize_conversation
 
+            full_qa_log = []
 
+            # Load all Q&A from file
+            if Path(st.session_state.json_file).exists():
+                with open(st.session_state.json_file, "r") as f:
+                    try:
+                        full_qa_log = json.load(f)
+                    except json.JSONDecodeError:
+                        st.warning("Could not read chat log file.")
+
+            if full_qa_log:
+                with st.spinner("Summarizing your conversation..."):
+                    summary_result = summarize_conversation(full_qa_log)
+                    st.subheader("📝 Conversation Summary & Intent:")
+                    st.write(summary_result)
+
+                    # ✅ Save to MongoDB
+                    # Parse summary and intent from result
+                    if "Summary:" in summary_result and "Intent:" in summary_result:
+                        parts = summary_result.split("Intent:")
+                        summary_text = parts[0].replace("Summary:", "").strip()
+                        intent_text = parts[1].strip()
+                    else:
+                        summary_text = summary_result
+                        intent_text = "Unknown"
+
+                    log_summary(
+                        email=st.session_state.email,
+                        summary=summary_text,
+                        intent=intent_text,
+                        conversation=full_qa_log
+                    )
+
+                    # ✅ Optional download
+                    st.download_button("Download Summary", summary_result, file_name="chat_summary.txt")
+
+            else:
+                st.warning("No conversation found to summarize.")
 
 if __name__ == "__main__":
     main()
-
